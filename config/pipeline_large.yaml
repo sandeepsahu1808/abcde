@@ -1,0 +1,68 @@
+# LARGE training files. Run: python run_pipeline.py all --config config/pipeline_large.yaml
+# ---------------------------------------------------------------------------
+# ONE config drives the whole pipeline. To add a new equipment type (Pump, RTG,
+# Genset...) copy a block under `equipment_types`, change columns/parameters.
+# No Python code change needed.
+# ---------------------------------------------------------------------------
+paths:
+  model_dir: models
+  processed_dir: data/processed
+  output_dir: outputs/large
+  report_dir: reports/large
+  log_file: logs/pipeline_large.log
+  asset_master: config/asset_master.csv     # Object ID -> Asset Category, Site
+  sensor_master: config/sensor_master.csv   # Object ID + Parameter Category -> Sensor Device ID
+
+equipment_types:
+
+  # ----------------------------- STATIC (hourly time series) -----------------
+  static_large:
+    enabled: true
+    mode: timeseries                 # one row = one time step
+    source: {file: data/raw/Static_Training_Data.xlsx, sheet: Sheet1}
+    columns: {object_id: Object ID, timestamp: Timestamp}
+    labels: {fault: Anomaly Type, normal_value: Normal}   # used ONLY for training split + evaluation
+    parameters:                      # sensor column -> category shown in the report, + hard limits
+      Temperature (Degree Cel): {category: Temperature, max: 95}
+      Vibration (mm/s):         {category: Vibration,   max: 5}
+      Pressure (bars):          {category: Pressure,    max: 3}
+      Engine RPM:               {category: RPM,         min: 900, max: 1200}
+    context: []                      # no load variable available for static
+    rolling_window: 6                # hours, for rolling mean/std features
+    split: {train: 0.6, calib: 0.2, block: 24}  # blocked shuffle; remaining 20% healthy = hold-out test
+    model: {score_method: xgboost, n_estimators: 100, random_state: 42}
+    detection:
+      threshold_percentile: 99       # alarm if score > 99th pct of healthy calibration scores
+      min_consecutive: 2             # fewer consecutive alarms -> "Watch" not "Anomaly"
+      merge_gap: 3                   # alarms <=3 rows apart = same episode
+      z_param: 3.0                   # a parameter is "involved" if |z| >= 3
+      rule_confidence: 99.0          # confidence given to pure hard-limit breaches
+    spike: {k: 4.0, max_len: 3}      # 1-3 row extreme transient = sensor suspect, not machine fault
+
+  # ----------------------------- CYCLIC (one row per work cycle) -------------
+  cyclic_large:
+    enabled: true
+    mode: cycle                      # one row = one crane move
+    source: {file: data/raw/Cyclic_Training_Data.xlsx, sheet: Cycle_Features}
+    columns: {object_id: Crane ID, timestamp: Cycle Start}
+    labels: {fault: Fault Type, normal_value: Normal}
+    parameters:
+      Current per Ton (A/t):    {category: Hoist Current}
+      Peak Vibration (mm/s):    {category: Vibration}
+      Motor Temp Rise (C):      {category: Temperature}
+      Mean Motor Temp (C):      {category: Temperature}
+      Peak Hyd Pressure (bar):  {category: Hydraulic Pressure}
+      Lock Time (s):            {category: Lock Time}
+      Unlock Time (s):          {category: Unlock Time}
+      Energy per Lift (kWh):    {category: Energy}
+      Peak Trolley Current (A): {category: Trolley Current}
+      Trolley Traverse (s):     {category: Trolley Traverse}
+    context: [Gross Load (t)]        # every feature is judged AFTER removing the effect of load
+    split: {train: 0.6, calib: 0.2, block: 25}
+    model: {score_method: max_z, n_estimators: 300, random_state: 42}  # xgboost | max_z
+    detection:
+      threshold_percentile: 99       # 3000+ healthy cycles available -> stricter percentile
+      min_consecutive: 1
+      merge_gap: 1
+      z_param: 3.0
+      rule_confidence: 99.0

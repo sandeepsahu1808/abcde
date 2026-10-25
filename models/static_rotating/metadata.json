@@ -1,0 +1,12 @@
+{
+  "name": "static_rotating",
+  "trained_at": "2026-10-22T15:00:58",
+  "sklearn": "1.9.1",
+  "threshold": 0.11220844089984894,
+  "counts": {
+    "train": 131008,
+    "val": 32791,
+    "calib": 35061,
+    "test": 35140
+  }
+}

@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# Data
+# We don't want to pack heavy training data into the docker image.
+# We only want the app code. Data comes via file upload on the API.
+data/raw/*
+data/processed/*
+
+# Outputs / Reports / Logs
+outputs/*
+reports/*
+logs/*
+
+# IDEs and Git
+.git/
+.vscode/
+.idea/
+.gitignore
+*.md

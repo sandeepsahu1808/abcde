@@ -1,0 +1,26 @@
+object_id,asset_category,site
+EQP-001,Rotating Equipment,SITE-01
+EQP-002,Rotating Equipment,SITE-01
+EQP-003,Rotating Equipment,SITE-02
+STS-07,STS,SITE-01
+EQP-004,Rotating Equipment,SITE-02
+EQP-005,Rotating Equipment,SITE-01
+EQP-006,Rotating Equipment,SITE-02
+EQP-007,Rotating Equipment,SITE-01
+EQP-008,Rotating Equipment,SITE-02
+STS-01,STS,SITE-01
+STS-02,STS,SITE-02
+STS-03,STS,SITE-01
+STS-04,STS,SITE-02
+FAN-001,Fan,SITE-01
+FAN-002,Fan,SITE-02
+GENSET-001,Genset,SITE-01
+GENSET-002,Genset,SITE-02
+MOTOR-001,Motor,SITE-01
+MOTOR-002,Motor,SITE-01
+MOTOR-003,Motor,SITE-02
+PUMP-001,Pump,SITE-01
+PUMP-002,Pump,SITE-02
+PUMP-003,Pump,SITE-02
+EQP-009,Rotating Equipment,SITE-01
+EQP-010,Rotating Equipment,SITE-02

@@ -1,0 +1,11 @@
+{
+  "name": "cyclic_large",
+  "trained_at": "2026-10-13T17:02:33",
+  "sklearn": "1.9.1",
+  "threshold": 3.575982613709194,
+  "counts": {
+    "train": 4497,
+    "calib": 1491,
+    "test": 1465
+  }
+}

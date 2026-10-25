@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise APM - Anomaly Detection</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header class="top-nav">
+        <div class="logo">
+            <div class="logo-icon"></div>
+            <span>Asset Performance Management</span>
+        </div>
+        <div class="user-profile">
+            <span>AI Anomaly Engine v2.0</span>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <aside class="top-panel">
+            <div class="top-panel-header">
+                <h3>Detection Setup</h3>
+            </div>
+            <form id="upload-form" class="horizontal-form">
+                <div class="form-group">
+                    <label for="equipment-type">Asset Type</label>
+                    <select id="equipment-type" name="equipment_type" required></select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="data-file" id="data-file-label">Telemetry Data (Excel/CSV)</label>
+                    <input type="file" id="data-file" name="file" required class="file-input">
+                </div>
+
+                
+                <button type="submit" class="submit-btn" id="submit-btn">
+                    <span id="btn-text">Run Analysis</span>
+                    <div id="loader" class="loader" style="display: none;"></div>
+                </button>
+            </form>
+        </aside>
+
+        <main class="main-content">
+            <div id="empty-state" class="empty-state">
+                <div class="empty-icon">📈</div>
+                <h2>Ready for Analysis</h2>
+                <p>Upload telemetry data to detect equipment anomalies, sensor faults, and performance degradation.</p>
+            </div>
+
+            <div id="results" class="results-container" style="display: none;">
+                <div class="dashboard-header">
+                    <h2>Analysis Results</h2>
+                    <div id="outcome-details" class="outcome-details"></div>
+                </div>
+
+                <div id="summary" class="summary-cards"></div>
+                
+                <!-- Dedicated Sensor Telemetry & Anomaly Outlier Graph Panel -->
+                <section id="graph-section" class="graph-section" style="display: none;">
+                    <div class="graph-card">
+                        <div class="graph-header">
+                            <div class="graph-title-group">
+                                <div class="graph-icon">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="graph-title">Telemetry Sensor Trend & Anomaly Outliers</h3>
+                                    <p class="graph-subtitle">Dynamic time-series plot comparing healthy operating baseline vs detected outliers across sensor channels</p>
+                                </div>
+                            </div>
+
+                            <div class="graph-controls">
+                                <div class="graph-control-item">
+                                    <label for="graph-sensor-select">Sensor Channel:</label>
+                                    <select id="graph-sensor-select" class="graph-select"></select>
+                                </div>
+                                <div class="graph-control-item" id="graph-asset-group">
+                                    <label for="graph-asset-select">Asset ID:</label>
+                                    <select id="graph-asset-select" class="graph-select">
+                                        <option value="All">(Select All)</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graph KPI Badges Bar -->
+                        <div class="graph-stat-bar">
+                            <div class="graph-stat-pill healthy">
+                                <span class="stat-dot green"></span>
+                                <span class="stat-label">Healthy Points:</span>
+                                <strong id="graph-stat-healthy">0</strong>
+                            </div>
+                            <div class="graph-stat-pill anomaly">
+                                <span class="stat-dot red"></span>
+                                <span class="stat-label">Anomaly Outliers:</span>
+                                <strong id="graph-stat-anomaly">0</strong>
+                            </div>
+                            <div class="graph-stat-pill suspect">
+                                <span class="stat-dot grey"></span>
+                                <span class="stat-label">Sensor Suspect:</span>
+                                <strong id="graph-stat-suspect">0</strong>
+                            </div>
+                            <div class="graph-stat-pill rate">
+                                <span class="stat-label">Outlier Ratio:</span>
+                                <strong id="graph-stat-rate">0.0%</strong>
+                            </div>
+                            <div class="graph-stat-pill limit" id="graph-stat-limit-pill" style="display: none;">
+                                <span class="stat-dot amber"></span>
+                                <span class="stat-label">Operating Limit:</span>
+                                <strong id="graph-stat-limit">-</strong>
+                            </div>
+                        </div>
+
+                        <!-- Canvas Container -->
+                        <div class="chart-canvas-container" id="chart-canvas-container">
+                            <canvas id="telemetry-chart"></canvas>
+                        </div>
+                    </div>
+                </section>
+                
+                <div class="table-section">
+                    <div class="table-header">
+                        <h3>Detected Incidents</h3>
+                        <div class="filters-container">
+                            <div class="filter-group-inline">
+                                <label for="filter-parameter">Parameter:</label>
+                                <select id="filter-parameter" class="select-filter"><option value="All">All Parameters</option></select>
+                            </div>
+                            <div class="filter-group-inline">
+                                <label for="filter-fault">Anomaly Fault:</label>
+                                <select id="filter-fault" class="select-filter"><option value="All">All Faults</option></select>
+                            </div>
+                            <div class="filter-group-inline">
+                                <label for="filter-outcome">Status:</label>
+                                <select id="filter-outcome" class="select-filter"><option value="All">All Outcomes</option></select>
+                            </div>
+                        </div>
+                        <div class="table-controls">
+                            <button type="button" id="download-excel-btn" class="export-btn" title="Download all detected anomaly episodes as Excel (.xlsx) file">
+                                <svg class="export-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                <span id="export-btn-text">Download Excel</span>
+                            </button>
+                            <div class="page-size-wrapper">
+                                <label for="page-size">Rows per page:</label>
+                                <select id="page-size" class="page-size-select">
+                                    <option value="10">10</option>
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="table-wrapper">
+                        <table id="results-table">
+                            <thead id="table-head">
+                                <tr>
+                                    <th>Asset ID</th>
+                                    <th>Parameter</th>
+                                    <th>Detected Value</th>
+                                    <th>Anomaly Fault</th>
+                                    <th>Data Confidence</th>
+                                    <th>Start Time</th>
+                                    <th>Outcome Status</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="pagination-controls">
+                        <button id="prev-btn" class="page-btn" disabled>Previous</button>
+                        <div id="page-numbers" class="page-numbers"></div>
+                        <button id="next-btn" class="page-btn" disabled>Next</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="/static/chart.umd.min.js"></script>
+    <script src="/static/script.js"></script>
+</body>
+</html>

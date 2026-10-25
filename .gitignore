@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+.env
+
+# Data (Never commit raw or processed data to git)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Models (Since these models are only 3MB, we can safely commit them for the PoC)
+# models/*
+# !models/.gitkeep
+*.joblib 
+
+# Outputs and Reports
+outputs/*
+reports/*
+!outputs/.gitkeep
+!reports/.gitkeep
+
+# Logs
+logs/*
+!logs/.gitkeep
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+

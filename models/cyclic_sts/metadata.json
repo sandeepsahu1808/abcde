@@ -1,0 +1,12 @@
+{
+  "name": "cyclic_sts",
+  "trained_at": "2026-10-22T15:06:36",
+  "sklearn": "1.9.1",
+  "threshold": 0.2664129436016083,
+  "counts": {
+    "train": 226866,
+    "val": 30970,
+    "calib": 45915,
+    "test": 56509
+  }
+}

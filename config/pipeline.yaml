@@ -1,0 +1,138 @@
+# ---------------------------------------------------------------------------
+# ONE config drives the whole pipeline. To add a new equipment type (Pump, RTG,
+# Genset...) copy a block under `equipment_types`, change columns/parameters.
+# No Python code change needed.
+# ---------------------------------------------------------------------------
+paths:
+  model_dir: models
+  processed_dir: data/processed
+  output_dir: outputs
+  report_dir: reports
+  log_file: logs/pipeline.log
+  asset_master: config/asset_master.csv     # Object ID -> Asset Category, Site
+  sensor_master: config/sensor_master.csv   # Object ID + Parameter Category -> Sensor Device ID
+
+equipment_types:
+
+  # ----------------------------- STATIC (hourly time series) -----------------
+  static_rotating:
+    enabled: true
+    mode: timeseries                 # one row = one time step
+    source:
+      files:
+        - data/raw/Steady_State_Equipment_2019_2024_Combined_15min.xlsx
+        - data/raw/Steady_State_Equipment_2025_2031_All_Faults.xlsx
+        # - data/raw/Static_Training_Data.xlsx
+      sheet: 0
+    columns: {object_id: Object ID, timestamp: Timestamp}
+    labels: {fault: Anomaly Type, normal_value: Normal}   # used ONLY for training split + evaluation
+    parameters:                      # sensor column -> category shown in the report, + hard limits
+      Temperature (Degree Cel): {category: Temperature, max: 95}
+      Vibration (mm/s):         {category: Vibration,   max: 5}
+      Pressure (bars):          {category: Pressure,    max: 3}
+      Engine RPM:               {category: RPM,         min: 900, max: 1200}
+    context: []                      # no load variable available for static
+    rolling_windows: [6, 24]         # hours, for rolling mean/std features
+    split: {train: 0.7, calib: 0.15, block: 24}  # blocked shuffle; remaining 15% healthy = hold-out test
+    model: {score_method: xgboost, n_estimators: 100, min_child_weight: 5, random_state: 42}
+    detection:
+      threshold_percentile: 95       # alarm if score > 95th pct of healthy calibration scores (lower = catch more faults)
+      min_consecutive: 1             # single row flag = Watch, sustained = Anomaly
+      merge_gap: 3                   # alarms <=3 rows apart = same episode
+      z_param: 3.0                   # a parameter is "involved" if |z| >= 3
+      rule_confidence: 99.0          # confidence given to pure hard-limit breaches
+    spike: {k: 4.0, max_len: 3}      # 1-3 row extreme transient = sensor suspect, not machine fault
+    flatline: {window: 6}            # 6 hours flatline = Stuck Sensor (Sensor Suspect)
+    null_policy: {transient_limit: 3, trailing_window: 24} # Phase 1: <=3 NaNs ffill, >=4 NaNs trailing mean + dropout flag
+
+  # ----------------------------- CYCLIC (1Hz SCADA Telemetry) ----------------
+  cyclic_sts:
+    enabled: true
+    mode: cycle                      # 1Hz SCADA telemetry stream
+    source:
+      files: 
+        - data/raw/Cyclic__Equip_Crane_STS_SCADA_Telemetry.xlsx
+        - data/raw/STS_Cyclic_Equipment_Telemetry_1Hz_Training_Dataset_CORRECTED.xlsx
+      sheet: Telemetry_1Hz
+    columns:
+      object_id: Crane ID
+      timestamp: Timestamp
+      cycle_id: Cycle ID
+      phase: Move Phase
+    labels:
+      fault: Fault Type
+      normal_value: Normal
+      health: Health Status
+    phases:
+      - HoistLoaded
+      - TrolleyLand
+      - LowerEmpty
+      - LowerLoaded
+      - TrolleyWater
+      - HoistEmpty
+      - Idle
+      - Lock
+      - Unlock
+    parameters:
+      Hoist Load (t):                   {category: Hoist Load}
+      Hoist Motor Current (A):          {category: Hoist Current}
+      Hoist Speed (m/min):              {category: Hoist Speed}
+      Hoist Height (m):                 {category: Hoist Height}
+      Hoist Motor Temp (C):             {category: Temperature}
+      Hoist Gearbox Vibration (mm/s):   {category: Vibration}
+      Trolley Current (A):              {category: Trolley Current}
+      Trolley Speed (m/min):            {category: Trolley Speed}
+      Trolley Position (m):             {category: Trolley Position}
+      Gantry Current (A):               {category: Gantry Current}
+      Gantry Position (m):              {category: Gantry Position}
+      Spreader Hyd Pressure (bar):      {category: Hydraulic Pressure}
+      Total Power (kW):                 {category: Power}
+    context: [Wind Speed (m/s), Ambient Temp (C)]
+    fault_primary_sensor:
+      Bearing Wear: Hoist Gearbox Vibration (mm/s)
+      Brake Drag: Hoist Motor Current (A)
+      Cooling Fault: Hoist Motor Temp (C)
+      Hydraulic Leak: Spreader Hyd Pressure (bar)
+      Trolley Drive Fault: Trolley Current (A)
+      Encoder Fault: Hoist Height (m)
+      Rope/Sheave Fault: Hoist Load (t)
+      Stuck Sensor: Hoist Motor Temp (C)
+    sensor_fault_map:
+      Hoist Motor Current (A): [Bearing Wear, Brake Drag, Rope/Sheave Fault]
+      Hoist Gearbox Vibration (mm/s): [Bearing Wear, Rope/Sheave Fault]
+      Hoist Motor Temp (C): [Cooling Fault, Brake Drag, Stuck Sensor]
+      Spreader Hyd Pressure (bar): [Hydraulic Leak, Stuck Sensor]
+      Hoist Speed (m/min): [Encoder Fault, Stuck Sensor]
+      Hoist Height (m): [Encoder Fault, Stuck Sensor]
+      Trolley Current (A): [Trolley Drive Fault, Stuck Sensor]
+      Trolley Speed (m/min): [Trolley Drive Fault, Stuck Sensor]
+      Trolley Position (m): [Trolley Drive Fault, Stuck Sensor]
+      Gantry Current (A): [Trolley Drive Fault, Stuck Sensor]
+      Gantry Position (m): [Trolley Drive Fault, Stuck Sensor]
+      Total Power (kW): [Bearing Wear, Brake Drag, Trolley Drive Fault]
+      Hoist Load (t): [Bearing Wear, Brake Drag]
+      Wind Speed (m/s): [Trolley Drive Fault, Rope/Sheave Fault]
+      Ambient Temp (C): [Cooling Fault, Stuck Sensor]
+    split:
+      train: 0.70
+      val_from_train: 0.10
+      calib: 0.15
+      test: 0.15
+      block: 100
+    model:
+      score_method: xgboost
+      n_estimators: 500
+      max_depth: 5
+      learning_rate: 0.03
+      min_child_weight: 3
+      subsample: 0.8
+      colsample_bytree: 0.8
+      gamma: 0.1
+      random_state: 42
+    detection:
+      threshold_percentile: 95
+      min_consecutive: 1
+      merge_gap: 3
+      z_param: 3.0
+      rule_confidence: 99.0
+

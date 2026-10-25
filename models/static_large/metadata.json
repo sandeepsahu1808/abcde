@@ -1,0 +1,11 @@
+{
+  "name": "static_large",
+  "trained_at": "2026-10-13T17:02:32",
+  "sklearn": "1.9.1",
+  "threshold": 0.003742270404472947,
+  "counts": {
+    "train": 34380,
+    "calib": 11477,
+    "test": 11475
+  }
+}
